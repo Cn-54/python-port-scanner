@@ -41,7 +41,7 @@ def scanMulti(target, minPort, maxPort, showServices=False, verbose=False,timeou
 
 def scanSingle(target, port,showServices=False,timeout=0.5):
     print(f"Scanning {target}:{port}\n")
-    res = scan(target,port,showServices)
+    res = scan(target,port,showServices,timeout)
     print(formatResult(res))
     print("\nDone.")
 
