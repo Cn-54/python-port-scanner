@@ -1,6 +1,6 @@
 # Port Scanner
 
-A fast multithreaded TCP port scanner written in Python.
+a simple multithreaded tcp port scanner written in python
 
 ## Disclaimer
 This tool is intended for educational and authorized security testing purposes only. 
