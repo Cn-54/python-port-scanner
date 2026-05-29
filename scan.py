@@ -1,5 +1,7 @@
 import socket
 import sys
+import threading
+
 
 
 def formatResult(res):
@@ -15,27 +17,38 @@ def getService(port):
     try:
         return socket.getservbyport(port, "tcp")
     except:
-        return "unknown"
+        return None
     
+sem = threading.Semaphore(100)  
 
-def scanMulti(target, minPort, maxPort,showServices=False,verbose=False):
+results = []
+def scanAndPrint(target, port, showServices, verbose, sem, timeout=0.5):
+    with sem:
+        res = scan(target, port, showServices, timeout)
+        results.append(res)
+
+def scanMulti(target, minPort, maxPort, showServices=False, verbose=False,timeout=0.5):
+    threads = []
     for port in range(minPort, maxPort + 1):
-        res = scan(target,port,showServices)
-        if verbose:
+        t = threading.Thread(target=scanAndPrint, args=(target, port, showServices, verbose,sem,timeout))
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+    for res in sorted(results, key=lambda r: r[1]):
+        if verbose or res[0]:
             print(formatResult(res))
-        else:
-            if res[0]:
-                print(formatResult(res))
 
-def scanSingle(target, port,showServices=False):
+def scanSingle(target, port,showServices=False,timeout=0.5):
     print(f"Scanning {target}:{port}\n")
     res = scan(target,port,showServices)
     print(formatResult(res))
     print("\nDone.")
 
-def scan(target, port, showServices=False):
+
+def scan(target, port, showServices=False,timeout = 0.5):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(0.5)
+    s.settimeout(timeout)
 
     try:
         result = s.connect_ex((target, port))
@@ -78,18 +91,24 @@ if __name__ == "__main__":
 
     showServices = "-s" in sys.argv
     verbose = "-v" in sys.argv
+    timeout = 0.5
+    if "-t" in sys.argv:
+        try:
+            timeout = float(sys.argv[sys.argv.index("-t")+1])
+        except:
+            print("no timeout passed using default (0.5s)")
     if checkHostname(target):
         if len(ports) == 1:
             port = int(ports[0])
             if checkPort(port):
-                scanSingle(target, port,showServices)
+                scanSingle(target, port,showServices,timeout)
             else:
                 print("invalid port entered")
         elif len(ports) == 2:
             minPort = int(ports[0])
             maxPort = int(ports[1])
             if checkPort(minPort) and checkPort(maxPort):
-                scanMulti(target, minPort, maxPort,showServices,verbose)
+                scanMulti(target, minPort, maxPort,showServices,verbose,timeout)
             else:
                 print("invalid port entered")
     else:
