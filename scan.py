@@ -2,46 +2,56 @@ import socket
 import sys
 
 
+def formatResult(res):
+    opn, port, service = res
+
+    if opn:
+        if service:
+            return f"[OPEN] port {port} ({service})"
+        return f"[OPEN] port {port}"
+    return f"[CLOSED] port {port}"
+
 def getService(port):
     try:
         return socket.getservbyport(port, "tcp")
     except:
         return "unknown"
+    
 
-def scanMulti(target, minPort, maxPort,showServices=False):
-    socket.setdefaulttimeout(0.5)
-    print(f"Scanning {target}...\n")
+def scanMulti(target, minPort, maxPort,showServices=False,verbose=False):
     for port in range(minPort, maxPort + 1):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        res = scan(target,port,showServices)
+        if verbose:
+            print(formatResult(res))
+        else:
+            if res[0]:
+                print(formatResult(res))
+
+def scanSingle(target, port,showServices=False):
+    print(f"Scanning {target}:{port}\n")
+    res = scan(target,port,showServices)
+    print(formatResult(res))
+    print("\nDone.")
+
+def scan(target, port, showServices=False):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.5)
+
+    try:
         result = s.connect_ex((target, port))
+
         if result == 0:
             if showServices:
                 service = getService(port)
-                print(f"[OPEN] Port {port} ({service})")
+                return (True, port, service)
             else:
-                print(f"[OPEN] Port {port}")
+                return (True, port,None)
         else:
-            print(f"[CLOSED] Port {port}")
+            return (False, port,None)
+
+    finally:
         s.close()
-    print("\nDone.")
 
-
-def scanSingle(target, port,showServices=False):
-    socket.setdefaulttimeout(0.5)
-    print(f"Scanning {target}:{port}\n")
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = s.connect_ex((target, port))
-    if result == 0:
-        if showServices:
-            service = getService(port)
-            print(f"[OPEN] Port {port} ({service})")
-        else:
-            print(f"[OPEN] Port {port}")
-    else:
-        print(f"[CLOSED] Port {port}")
-    s.close()
-
-    print("\nDone.")
 
 
 if __name__ == "__main__":
@@ -57,6 +67,7 @@ if __name__ == "__main__":
     ports = portArg.split(":")
 
     showServices = "-s" in sys.argv
+    verbose = "-v" in sys.argv
 
     if len(ports) == 1:
         port = int(ports[0])
@@ -64,4 +75,4 @@ if __name__ == "__main__":
     elif len(ports) == 2:
         minPort = int(ports[0])
         maxPort = int(ports[1])
-        scanMulti(target, minPort, maxPort,showServices)
+        scanMulti(target, minPort, maxPort,showServices,verbose)
