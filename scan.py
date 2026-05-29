@@ -54,6 +54,16 @@ def scan(target, port, showServices=False):
 
 
 
+def checkPort(port):
+    return False if port > 65535 or port < 0 else True
+
+def checkHostname(host):
+    try:
+        socket.gethostbyname(host)
+        return True
+    except socket.gaierror:
+        return False
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage:")
@@ -68,11 +78,21 @@ if __name__ == "__main__":
 
     showServices = "-s" in sys.argv
     verbose = "-v" in sys.argv
+    if checkHostname(target):
+        if len(ports) == 1:
+            port = int(ports[0])
+            if checkPort(port):
+                scanSingle(target, port,showServices)
+            else:
+                print("invalid port entered")
+        elif len(ports) == 2:
+            minPort = int(ports[0])
+            maxPort = int(ports[1])
+            if checkPort(minPort) and checkPort(maxPort):
+                scanMulti(target, minPort, maxPort,showServices,verbose)
+            else:
+                print("invalid port entered")
+    else:
+        print("invalid hostname or ip entered")
 
-    if len(ports) == 1:
-        port = int(ports[0])
-        scanSingle(target, port,showServices)
-    elif len(ports) == 2:
-        minPort = int(ports[0])
-        maxPort = int(ports[1])
-        scanMulti(target, minPort, maxPort,showServices,verbose)
+
